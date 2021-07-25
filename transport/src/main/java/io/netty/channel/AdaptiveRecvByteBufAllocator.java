@@ -25,6 +25,8 @@ import static java.lang.Math.min;
 /**
  * The {@link RecvByteBufAllocator} that automatically increases and
  * decreases the predicted buffer size on feed back.
+ *
+ * 根据上一次的分配结果
  * <p>
  * It gradually increases the expected number of readable bytes if the previous
  * read fully filled the allocated buffer.  It gradually decreases the expected

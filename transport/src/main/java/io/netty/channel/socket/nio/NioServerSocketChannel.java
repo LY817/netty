@@ -42,6 +42,12 @@ import java.util.Map;
 /**
  * A {@link io.netty.channel.socket.ServerSocketChannel} implementation which uses
  * NIO selector based implementation to accept new connections.
+ *
+ * selector选择器实现的ServerChannel，用于接收客户端新连接
+ * 对JDK nio包的java.nio.channels.ServerSocketChannel进行封装和扩展
+ *
+ * 程序中是面向Channel编程
+ * 程序设计模型中，分selector、channel、buffer
  */
 public class NioServerSocketChannel extends AbstractNioMessageChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
@@ -58,6 +64,11 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
              *  {@link SelectorProvider#provider()} which is called by each ServerSocketChannel.open() otherwise.
              *
              *  See <a href="https://github.com/netty/netty/issues/2308">#2308</a>.
+             *  一个优化issue，大意如下：
+             *  将SelectorProvider.provider()返回的SelectorProvider作为成员变量，创建channel时使用SelectorProvider.openServerSocketChannel()创建
+             *  替代原来使用ServerSocketChannel.open()静态方法创建channel
+             *  因为ServerSocketChannel.open()中有同步的操作（每次调用都会执行SelectorProvider.provider()，这个方法中有同步操作），大量创建channel是会影响性能
+             *
              */
             return provider.openServerSocketChannel();
         } catch (IOException e) {
@@ -84,9 +95,23 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     /**
      * Create a new instance using the given {@link ServerSocketChannel}.
+     *
+     * 对jdk中ServerSocketChannel的封装
+     * 维护jdk中的ServerSocketChannel与感兴趣的SelectionKey的对应关系
      */
     public NioServerSocketChannel(ServerSocketChannel channel) {
+        /**
+         * 三个参数的解释
+         * parent：null 创建该channel的channel，此处为初始化最开始的ServerSocketChannel，所以为null
+         * channel：JDK的ServerSocketChannel实例，有provider创建
+         * readInterestOp：该channel关注的selector事件，此处为服务端channel，关注的接入事件accept
+         */
         super(null, channel, SelectionKey.OP_ACCEPT);
+        /**
+         * 初始化ServerSocketChannelConfig
+         *
+         * javaChannel()获得的socketChannel对象即为上文中传入的channel（即jdk创建的serverSocketChannel）
+         */
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
     }
 
@@ -144,10 +169,13 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     @Override
     protected int doReadMessages(List<Object> buf) throws Exception {
+        // 获取到客户端新连接的 SocketChannel
         SocketChannel ch = SocketUtils.accept(javaChannel());
 
         try {
             if (ch != null) {
+                // 接着就实例化一个 NioSocketChannel
+                // 这个 NioSocketChannel 的父 Channel 就是 NioServerSocketChannel 实例
                 buf.add(new NioSocketChannel(this, ch));
                 return 1;
             }

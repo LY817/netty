@@ -434,6 +434,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     @Override
     protected void run() {
         int selectCnt = 0;
+        // eventLoop的名字来自与这个死循环
+        // 在java中 用for和while写死循环的效率是一样的
+        // 在c语言中 while(1) 比 for(;;)编译出来的机器码指令行数多一些
+        // 在golang中 不支持while关键字
         for (;;) {
             try {
                 int strategy;
@@ -499,7 +503,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 } else {
                     ranTasks = runAllTasks(0); // This will run the minimum number of tasks
                 }
-
+                // 解决JDK中epoll的bug:即使Selector轮训的时间列表为空，NIO线程一样可以被唤醒，导致CPU100
                 if (ranTasks || strategy > 0) {
                     if (selectCnt > MIN_PREMATURE_SELECTOR_RETURNS && logger.isDebugEnabled()) {
                         logger.debug("Selector.select() returned prematurely {} times in a row for Selector {}.",
@@ -531,7 +535,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
         }
     }
-
+    // 解决JDK中epoll的bug:即使Selector轮训的时间列表为空，NIO线程一样可以被唤醒，导致CPU100
     // returns true if selectCnt should be reset
     private boolean unexpectedSelectorWakeup(int selectCnt) {
         if (Thread.interrupted()) {
@@ -547,6 +551,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
             return true;
         }
+        // 重建selector
         if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 &&
                 selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
             // The selector returned prematurely many times in a row.

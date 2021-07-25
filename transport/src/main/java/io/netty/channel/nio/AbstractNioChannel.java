@@ -72,15 +72,23 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     /**
      * Create a new instance
      *
+     * 对jdk中的channel进行封装
+     * 维护与其他AbstractNioChannel的关联关系
+     * 维护与关联事件类型的对应关系
+     *
      * @param parent            the parent {@link Channel} by which this instance was created. May be {@code null}
+     *                          创建这个channel的channel
      * @param ch                the underlying {@link SelectableChannel} on which it operates
+     *                          JDK中的channel，由provider创建，可以看出netty中的Channel是对JDK Channel的封装
      * @param readInterestOp    the ops to set to receive data from the {@link SelectableChannel}
+     *                          这个channel实例关注的selector事件 {@link SelectionKey}
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
         super(parent);
         this.ch = ch;
         this.readInterestOp = readInterestOp;
         try {
+            // 默认将channel设置为非阻塞
             ch.configureBlocking(false);
         } catch (IOException e) {
             try {
